@@ -1,0 +1,8 @@
+#!/bin/bash
+SERVICE=$1
+
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+az acr repository show-tags -n $ACR_NAME --repository service.$SERVICE
+

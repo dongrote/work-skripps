@@ -1,0 +1,28 @@
+#!/bin/bash
+SERVICE=$1
+
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+info() {
+  echo " [I] $@"
+}
+
+error() {
+  echo " [E] $@"
+}
+
+aksCommand() {
+    #set -x
+    az aks command invoke \
+      -n "$AKS_NAME" \
+      -g "$RESOURCE_GROUP" \
+      --command "$@" | tail -n +2
+    ret=$?
+    #set +x
+    return $ret
+}
+
+
+info "Fetching $SERVICE deployment configuration"
+aksCommand 'kubectl -n fist get deployment dev-fist-'"$@"' --output yaml'

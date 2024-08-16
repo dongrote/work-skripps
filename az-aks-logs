@@ -1,0 +1,10 @@
+#!/bin/bash
+SERVICE=$1
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+az aks command invoke \
+  -n "$AKS_NAME" \
+  -g "$RESOURCE_GROUP" \
+  --command "kubectl -n fist logs deployments/dev-fist-$SERVICE"
+

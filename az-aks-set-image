@@ -1,0 +1,11 @@
+#!/bin/bash
+SERVICE=$1
+TAG=$2
+
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+az aks command invoke \
+  -n "$AKS_NAME" \
+  -g "$RESOURCE_GROUP" \
+  --command "kubectl set image deployment/dev-fist-$SERVICE $SERVICE=acrfistdev.azurecr.io/service.$SERVICE:$TAG -n fist"

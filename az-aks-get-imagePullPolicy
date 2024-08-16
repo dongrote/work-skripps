@@ -1,0 +1,47 @@
+#!/bin/bash
+SERVICE=$1
+
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+info() {
+  echo " [I] $@"
+}
+
+error() {
+  echo " [E] $@"
+}
+
+aksCommand() {
+    #set -x
+    az aks command invoke \
+      -n "$AKS_NAME" \
+      -g "$RESOURCE_GROUP" \
+      --command "$@" | tail -n +2
+    ret=$?
+    #set +x
+    return $ret
+}
+
+
+info "Setting $POLICY for $SERVICE service"
+info "Fetching $SERVICE deployment configuration"
+DEPLOYMENT_JSON=`aksCommand 'kubectl -n fist get deployment dev-fist-'"$SERVICE"' --output json'`
+if [[ $? -ne 0 ]]
+then
+    error "deployment configuration fetch failed"
+    exit 1
+fi
+
+POLICY=`echo $DEPLOYMENT_JSON |\
+  jq '.spec.template.spec.containers' 2>/dev/null|\
+  jq '.[] | select(.name=="'"$SERVICE"'")' 2>/dev/null|\
+  jq -r '.imagePullPolicy' 2>/dev/null` 
+
+if [[ $? -ne 0 || "$POLICY" -eq "" ]]
+then
+    error "invalid service: '$SERVICE'"
+    exit 1
+fi
+
+info "$SERVICE imagePullPolicy '$POLICY'"

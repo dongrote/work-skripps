@@ -1,0 +1,38 @@
+#!/bin/bash
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+UPLOAD_FILE="$1"
+
+info() {
+  echo " [I] $@"
+}
+
+error() {
+  echo " [E] $@"
+}
+
+uuid >/dev/null 2>&1
+if [[ $? -ne 0 ]]
+then
+    error "uuid is not installed"
+    error "run sudo apt install -y uuid"
+    exit 1
+fi
+
+info "Fetching existing containers"
+CONTAINERS_JSON=`az storage container list --auth-mode login --account-name $UPLOAD_STORAGE_ACCOUNT_NAME`
+CONTAINER=`echo "$CONTAINERS_JSON" | jq -r '.[0].name'`
+
+info "Using container '$CONTAINER'"
+UUID=`uuid`
+info "Generating GUID for upload: '$UUID'"
+BLOB_NAME="$UUID/$UUID"
+info "Uploading '$UPLOAD_FILE' as '$BLOB_NAME'"
+
+az storage blob upload \
+    --auth-mode login \
+    --account-name $UPLOAD_STORAGE_ACCOUNT_NAME \
+    -f "$UPLOAD_FILE" \
+    -c "$CONTAINER" \
+    -n "$BLOB_NAME"

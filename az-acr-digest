@@ -1,0 +1,8 @@
+#!/bin/bash
+SERVICEANDTAG=$1
+
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+az acr repository show -n $ACR_NAME --image service.$SERVICEANDTAG | jq -r '.digest'
+

@@ -1,0 +1,60 @@
+#!/bin/bash
+CONFIG_PATH="$(dirname $0)/.az.config"
+. "$CONFIG_PATH"
+
+EDITOR="${EDITOR:-vim}"
+SERVICE=$1
+
+info() {
+  echo " [I] $@"
+}
+
+error() {
+  echo " [E] $@"
+}
+
+aksCommand() {
+    az aks command invoke \
+        -n "$AKS_NAME" \
+        -g "$RESOURCE_GROUP" \
+        --command "$@" | tail -n +2
+    ret=$?
+    return $ret
+}
+
+aksCommandWithFile() {
+    CMD="$1"
+    YML="$2"
+    az aks command invoke \
+        -n "$AKS_NAME" \
+        -g "$RESOURCE_GROUP" \
+        -f "$YML" \
+        --command "$CMD"
+    ret=$?
+    return $ret
+}
+
+info "Fetching $SERVICE deployment configuration ..."
+mkdir -p /tmp/aks
+TEMPFILE=`mktemp -p /tmp/aks tmp.XXXXXX.yaml`
+aksCommand 'kubectl -n fist get deployment dev-fist-'"$SERVICE"' --output yaml' >$TEMPFILE
+if [[ $? -ne 0 ]]
+then
+    error "deployment configuration fetch failed"
+    exit 1
+fi
+
+info "Opening configuration in editor"
+$EDITOR $TEMPFILE
+
+info "Patching deployment dev-fist-$SERVICE ..."
+TEMPFILE_BASENAME=$(basename "$TEMPFILE")
+aksCommandWithFile 'kubectl -n fist patch deployment dev-fist-'"$SERVICE"' --patch-file '"$TEMPFILE_BASENAME" "$TEMPFILE"
+if [[ $? -ne 0 ]]
+then
+    error "deployment apply failed"
+    exit 1
+fi
+
+rm $TEMPFILE
+info "applied changes ... hopefully"
