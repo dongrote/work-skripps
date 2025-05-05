@@ -1,5 +1,9 @@
 #!/bin/sh
 
+install_rust() {
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+}
+
 install_docker() {
   # Azure Linux 3.0 uses moby
   sudo tdnf install -y \
@@ -410,5 +414,6 @@ install_docker
 install_neovim
 setup_neovim
 setup_tmux
+install_rust
 
 echo -e "You should reload your profile:\n\n\tsource \$HOME/.bash_profile\n"
