@@ -1,5 +1,21 @@
 #!/bin/sh
 
+install_docker() {
+  # Azure Linux 3.0 uses moby
+  sudo tdnf install -y \
+    moby-engine \
+    moby-cli \
+    ca-certificates
+  sudo systemctl enable docker.service && \
+    sudo systemctl start docker.service
+
+  sudo usermod -aG docker dongrote
+
+  sudo tdnf install -y docker-compose
+
+  echo -e '\n\tYou will need to log out and log back in for user group permissions to update.\n'
+}
+
 install_neovim() {
   # install neovim
   NVIM_TARBALL=nvim-linux-x86_64.tar.gz
@@ -390,6 +406,7 @@ sudo dnf install -y \
   tmux \
   build-essential
 
+install_docker
 install_neovim
 setup_neovim
 setup_tmux
