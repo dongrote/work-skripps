@@ -200,6 +200,8 @@ EOF
 }
 
 setup_neovim_lsp() {
+  # csharp-ls requires dotnet-sdk-9.0
+  sudo tdnf install -y dotnet-sdk-9.0
   cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/lsp.lua
 return {
     "neovim/nvim-lspconfig",
