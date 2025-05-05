@@ -319,6 +319,7 @@ sudo dnf install -y \
   build-essential
 
 install_neovim
+setup_neovim
 setup_tmux
 
 echo -e "You should reload your profile:\n\n\tsource \$HOME/.bash_profile\n"
