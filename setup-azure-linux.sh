@@ -33,6 +33,24 @@ install_neovim() {
     ln -s $HOME/nvim-linux-x86_64/bin/nvim $HOME/bin/nvim
 }
 
+setup_neovim_tokyonight() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/tokyonight.lua
+return {
+  "folke/tokyonight.nvim",
+  lazy = false,
+  priority = 1000,
+  config = function()
+    require('tokyonight').setup({
+      style = 'storm',
+      transparent = true,
+      terminal_colors = true,
+    })
+    vim.cmd([[colorscheme tokyonight]])
+  end,
+}
+EOF
+}
+
 setup_neovim_fugitive() {
   cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/fugitive.lua
 return {
@@ -515,6 +533,7 @@ setup_neovim_treesitter
 setup_neovim_fugitive
 setup_neovim_lualine
 setup_neovim_lsp
+setup_neovim_tokyonight
 }
 
 setup_tmux() {
