@@ -1,6 +1,10 @@
 #!/bin/sh
 
 install_rust() {
+  which cargo 2>&1 >/dev/null
+  if [ $? -eq 0 ] ; then
+    return
+  fi
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 }
 
@@ -29,56 +33,312 @@ install_neovim() {
     ln -s $HOME/nvim-linux-x86_64/bin/nvim $HOME/bin/nvim
 }
 
-setup_neovim() {
-  if [ -d $HOME/.config/nvim ] ; then
-    rm -rf $HOME/.config/nvim
-  fi
-  mkdir -p $HOME/.config/nvim/lua/dongrote/plugins
-  cat <<EOF >$HOME/.config/nvim/init.lua
-require('dongrote.autocmds')
-require('dongrote.remap')
-require('dongrote.set')
-require('dongrote.lazy')
+setup_neovim_fugitive() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/fugitive.lua
+return {
+    "tpope/vim-fugitive",
+}
 EOF
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/autocmds.lua
--- Define an autocommand group to organize your autocmds
-local augroup = vim.api.nvim_create_augroup("BuildKeymapGroup", { clear = true })
+}
 
--- Rust-specific keymap
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "rust",
-  group = augroup,
-  callback = function()
-    vim.keymap.set("n", "<leader>b", function()
-      vim.cmd("!cargo b")
-    end, { desc = "Run cargo build", buffer = true })
-    vim.keymap.set("n", "<leader>B", function()
-      vim.cmd("!cargo b -r")
-    end, { desc = "Run cargo release build", buffer = true })
-    vim.keymap.set("n", "<leader>t", function()
-      vim.cmd("!cargo t")
-    end, { desc = "Run cargo test", buffer = true })
+setup_neovim_tree() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/nvim-tree.lua
+return {
+  "nvim-tree/nvim-tree.lua",
+  version = "*",
+  lazy = false,
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  config = function()
+    require("nvim-tree").setup {
+      view = {
+        float = { enable = true, },
+        width = {
+          min = 30,
+          max = -1,
+        },
+      },
+      actions = {
+        open_file = { quit_on_open = true, },
+      },
+    }
   end,
-})
+}
+EOF
+}
 
--- C#-specific keymap
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "cs",
-  group = augroup,
-  callback = function()
-    vim.keymap.set("n", "<leader>b", function()
-      vim.cmd("!dotnet build")
-    end, { desc = "Run dotnet build", buffer = true })
-    vim.keymap.set("n", "<leader>B", function()
-      vim.cmd("!dotnet build -c Release")
-    end, { desc = "Run dotnet release build", buffer = true })
-    vim.keymap.set("n", "<leader>t", function()
-      vim.cmd("!dotnet test")
-    end, { desc = "Run dotnet test", buffer = true })
+setup_neovim_treesitter() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/treesitter.lua
+return {
+    "nvim-treesitter/nvim-treesitter",
+    build = ":TSUpdate",
+    config = function()
+        require("nvim-treesitter.configs").setup({
+            -- A list of parser names, or "all"
+            ensure_installed = {
+                "vimdoc", "javascript", "typescript", "c", "lua", "rust",
+                "jsdoc", "bash", "c_sharp"
+            },
+
+            -- Install parsers synchronously (only applied to `ensure_installed`)
+            sync_install = false,
+
+            -- Automatically install missing parsers when entering buffer
+            -- Recommendation: set to false if you don"t have `tree-sitter` CLI installed locally
+            auto_install = true,
+
+            indent = {
+                enable = true
+            },
+
+            highlight = {
+                -- `false` will disable the whole extension
+                enable = true,
+
+                -- Setting this to true will run `:h syntax` and tree-sitter at the same time.
+                -- Set this to `true` if you depend on "syntax" being enabled (like for indentation).
+                -- Using this option may slow down your editor, and you may see some duplicate highlights.
+                -- Instead of true it can also be a list of languages
+                additional_vim_regex_highlighting = { "markdown" },
+            },
+        })
+
+        local treesitter_parser_config = require("nvim-treesitter.parsers").get_parser_configs()
+        treesitter_parser_config.templ = {
+            install_info = {
+                url = "https://github.com/vrischmann/tree-sitter-templ.git",
+                files = {"src/parser.c", "src/scanner.c"},
+                branch = "master",
+            },
+        }
+
+        vim.treesitter.language.register("templ", "templ")
+    end
+}
+EOF
+}
+
+setup_neovim_whichkey() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/which-key.lua
+return {
+	"folke/which-key.nvim",
+	event = "VeryLazy",
+	opts = {},
+	keys = {
+		{
+			"<leader>?",
+			function()
+				require("which-key").show({global = false})
+			end,
+			desc = "Buffer local Keymaps (which-key)",
+		},
+	},
+}
+EOF
+}
+
+setup_neovim_lualine() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/lualine.lua
+return {
+  "nvim-lualine/lualine.nvim",
+  config = function()
+    require('lualine').setup {
+      options = {
+        icons_enabled = true,
+        theme = 'material',
+        ignore_focus = {},
+      },
+      sections = {
+        lualine_a = {'mode'},
+        lualine_b = {'branch', 'diff', 'diagnostics'},
+        lualine_c = {'filename'},
+        lualine_x = {'encoding', 'fileformat', 'filetype'},
+        lualine_y = {'progress'},
+        lualine_z = {'location'},
+      },
+      tabline = {},
+      winbar = {},
+      inactive_winbar = {},
+      extensions = {},
+    }
   end,
+}
+EOF
+}
+
+setup_neovim_telescope() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/telescope.lua
+return {
+    "nvim-telescope/telescope.nvim",
+
+    tag = "0.1.5",
+
+    dependencies = {
+        "nvim-lua/plenary.nvim"
+    },
+
+    config = function()
+        require('telescope').setup({})
+
+        local builtin = require('telescope.builtin')
+        vim.keymap.set('n', '<leader>pf', builtin.find_files, { desc = "Find Files", })
+        vim.keymap.set('n', '<C-p>', builtin.git_files, {})
+        vim.keymap.set('n', '<leader>pws', function()
+            local word = vim.fn.expand("<cword>")
+            builtin.grep_string({ search = word })
+        end)
+        vim.keymap.set('n', '<leader>pWs', function()
+            local word = vim.fn.expand("<cWORD>")
+            builtin.grep_string({ search = word })
+        end)
+        vim.keymap.set('n', '<leader>ps', function()
+            builtin.grep_string({ search = vim.fn.input("Grep > ") })
+        end)
+        vim.keymap.set('n', '<leader>vh', builtin.help_tags, {})
+    end
+}
+EOF
+}
+
+setup_neovim_lsp() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/lsp.lua
+return {
+    "neovim/nvim-lspconfig",
+    dependencies = {
+        "williamboman/mason.nvim",
+        "williamboman/mason-lspconfig.nvim",
+        "hrsh7th/cmp-nvim-lsp",
+        "hrsh7th/cmp-buffer",
+        "hrsh7th/cmp-path",
+        "hrsh7th/cmp-cmdline",
+        "hrsh7th/nvim-cmp",
+        "L3MON4D3/LuaSnip",
+        "saadparwaiz1/cmp_luasnip",
+        "j-hui/fidget.nvim",
+        "razzmatazz/csharp-language-server",
+        "Decodetalkers/csharpls-extended-lsp.nvim",
+    },
+
+    config = function()
+        local cmp = require('cmp')
+        local cmp_lsp = require("cmp_nvim_lsp")
+        local capabilities = vim.tbl_deep_extend(
+            "force",
+            {},
+            vim.lsp.protocol.make_client_capabilities(),
+            cmp_lsp.default_capabilities())
+
+        require("fidget").setup({})
+        require("mason").setup()
+        require("mason-lspconfig").setup({
+            ensure_installed = {
+                "lua_ls",
+                "dockerls",
+                "csharp_ls",
+                "rust_analyzer",
+            },
+            handlers = {
+                function(server_name) -- default handler (optional)
+                    require("lspconfig")[server_name].setup {
+                        capabilities = capabilities
+                    }
+                end,
+
+                ["lua_ls"] = function()
+                    local lspconfig = require("lspconfig")
+                    lspconfig.lua_ls.setup {
+                        capabilities = capabilities,
+                        settings = {
+                            Lua = {
+                                runtime = { version = "Lua 5.1" },
+                                diagnostics = {
+                                    globals = { "bit", "vim", "it", "describe", "before_each", "after_each" },
+                                }
+                            }
+                        }
+                    }
+                end,
+            }
+        })
+
+        local cmp_select = { behavior = cmp.SelectBehavior.Select }
+
+        cmp.setup({
+            snippet = {
+                expand = function(args)
+                    require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
+                end,
+            },
+            mapping = cmp.mapping.preset.insert({
+                ['<C-Tab>'] = cmp.mapping.select_prev_item(cmp_select),
+                ['<Tab>'] = cmp.mapping.select_next_item(cmp_select),
+                ['<CR>'] = cmp.mapping.confirm({ select = true }),
+                ["<C-Space>"] = cmp.mapping.complete(),
+            }),
+            sources = cmp.config.sources({
+                { name = 'nvim_lsp' },
+                { name = 'luasnip' }, -- For luasnip users.
+            }, {
+                { name = 'buffer' },
+            })
+        })
+
+        vim.diagnostic.config({
+            -- update_in_insert = true,
+            float = {
+                focusable = false,
+                style = "minimal",
+                border = "rounded",
+                source = "always",
+                header = "",
+                prefix = "",
+            },
+        })
+    end
+}
+EOF
+}
+
+setup_neovim_lazy() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/lazy.lua
+-- Bootstrap lazy.nvim
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not (vim.uv or vim.loop).fs_stat(lazypath) then
+  local lazyrepo = "https://github.com/folke/lazy.nvim.git"
+  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
+  if vim.v.shell_error ~= 0 then
+    vim.api.nvim_echo({
+      { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
+      { out, "WarningMsg" },
+      { "\nPress any key to exit..." },
+    }, true, {})
+    vim.fn.getchar()
+    os.exit(1)
+  end
+end
+vim.opt.rtp:prepend(lazypath)
+
+-- Make sure to setup `mapleader` and `maplocalleader` before
+-- loading lazy.nvim so that mappings are correct.
+-- This is also a good place to setup other settings (vim.opt)
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\\\"
+
+-- Setup lazy.nvim
+require("lazy").setup({
+  spec = {
+    -- import your plugins
+    { import = "dongrote/plugins" },
+  },
+  -- Configure any other settings here. See the documentation for more details.
+  -- colorscheme that will be used when installing plugins.
+  install = { colorscheme = { "habamax" } },
+  -- automatically check for plugin updates
+  checker = { enabled = true },
 })
 EOF
+}
 
+setup_neovim_remap() {
   cat <<EOF >$HOME/.config/nvim/lua/dongrote/remap.lua
 vim.g.mapleader = " "
 
@@ -152,7 +412,9 @@ vim.keymap.set("n", "<leader>cm", "<cmd>Telescope git_commits<CR>", { desc = "te
 vim.keymap.set("n", "<leader>gt", "<cmd>Telescope git_status<CR>", { desc = "telescope git status" })
 vim.keymap.set("n", "<leader>pt", "<cmd>Telescope terms<CR>", { desc = "telescope pick hidden term" })
 EOF
+}
 
+setup_neovim_settings() {
   cat <<EOF >$HOME/.config/nvim/lua/dongrote/set.lua
 vim.opt.nu = true
 vim.opt.relativenumber = true
@@ -181,165 +443,76 @@ vim.opt.foldlevelstart = 2
 -- disable virtual text because lsp_lines makes them redundant
 vim.diagnostic.config({ virtual_text = false })
 EOF
+}
 
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/lazy.lua
--- Bootstrap lazy.nvim
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
-  local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
-  if vim.v.shell_error ~= 0 then
-    vim.api.nvim_echo({
-      { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-      { out, "WarningMsg" },
-      { "\nPress any key to exit..." },
-    }, true, {})
-    vim.fn.getchar()
-    os.exit(1)
-  end
-end
-vim.opt.rtp:prepend(lazypath)
+setup_neovim_autocmds() {
+  cat <<EOF >$HOME/.config/nvim/lua/dongrote/autocmds.lua
+-- Define an autocommand group to organize your autocmds
+local augroup = vim.api.nvim_create_augroup("BuildKeymapGroup", { clear = true })
 
--- Make sure to setup `mapleader` and `maplocalleader` before
--- loading lazy.nvim so that mappings are correct.
--- This is also a good place to setup other settings (vim.opt)
-vim.g.mapleader = " "
-vim.g.maplocalleader = "\\\\"
+-- Rust-specific keymap
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "rust",
+  group = augroup,
+  callback = function()
+    vim.keymap.set("n", "<leader>b", function()
+      vim.cmd("!cargo b")
+    end, { desc = "Run cargo build", buffer = true })
+    vim.keymap.set("n", "<leader>B", function()
+      vim.cmd("!cargo b -r")
+    end, { desc = "Run cargo release build", buffer = true })
+    vim.keymap.set("n", "<leader>r", function()
+      vim.cmd("!cargo r")
+    end, { desc = "Run cargo run", buffer = true })
+    vim.keymap.set("n", "<leader>t", function()
+      vim.cmd("!cargo t")
+    end, { desc = "Run cargo test", buffer = true })
+  end,
+})
 
--- Setup lazy.nvim
-require("lazy").setup({
-  spec = {
-    -- import your plugins
-    { import = "dongrote/plugins" },
-  },
-  -- Configure any other settings here. See the documentation for more details.
-  -- colorscheme that will be used when installing plugins.
-  install = { colorscheme = { "habamax" } },
-  -- automatically check for plugin updates
-  checker = { enabled = true },
+-- C#-specific keymap
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "cs",
+  group = augroup,
+  callback = function()
+    vim.keymap.set("n", "<leader>b", function()
+      vim.cmd("!dotnet build")
+    end, { desc = "Run dotnet build", buffer = true })
+    vim.keymap.set("n", "<leader>B", function()
+      vim.cmd("!dotnet build -c Release")
+    end, { desc = "Run dotnet release build", buffer = true })
+    vim.keymap.set("n", "<leader>t", function()
+      vim.cmd("!dotnet test")
+    end, { desc = "Run dotnet test", buffer = true })
+  end,
 })
 EOF
-
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/nvim-tree.lua
-return {
-  "nvim-tree/nvim-tree.lua",
-  version = "*",
-  lazy = false,
-  dependencies = { "nvim-tree/nvim-web-devicons" },
-  config = function()
-    require("nvim-tree").setup {
-      view = {
-        float = { enable = true, },
-        width = {
-          min = 30,
-          max = -1,
-        },
-      },
-      actions = {
-        open_file = { quit_on_open = true, },
-      },
-    }
-  end,
 }
+
+setup_neovim() {
+  if [ -d $HOME/.config/nvim ] ; then
+    rm -rf $HOME/.config/nvim
+  fi
+  mkdir -p $HOME/.config/nvim/lua/dongrote/plugins
+  cat <<EOF >$HOME/.config/nvim/init.lua
+require('dongrote.autocmds')
+require('dongrote.remap')
+require('dongrote.set')
+require('dongrote.lazy')
 EOF
 
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/treesitter.lua
-return {
-    "nvim-treesitter/nvim-treesitter",
-    build = ":TSUpdate",
-    config = function()
-        require("nvim-treesitter.configs").setup({
-            -- A list of parser names, or "all"
-            ensure_installed = {
-                "vimdoc", "javascript", "typescript", "c", "lua", "rust",
-                "jsdoc", "bash", "c_sharp"
-            },
+setup_neovim_autocmds
+setup_neovim_remap
+setup_neovim_settings
 
-            -- Install parsers synchronously (only applied to `ensure_installed`)
-            sync_install = false,
-
-            -- Automatically install missing parsers when entering buffer
-            -- Recommendation: set to false if you don"t have `tree-sitter` CLI installed locally
-            auto_install = true,
-
-            indent = {
-                enable = true
-            },
-
-            highlight = {
-                -- `false` will disable the whole extension
-                enable = true,
-
-                -- Setting this to true will run `:h syntax` and tree-sitter at the same time.
-                -- Set this to `true` if you depend on "syntax" being enabled (like for indentation).
-                -- Using this option may slow down your editor, and you may see some duplicate highlights.
-                -- Instead of true it can also be a list of languages
-                additional_vim_regex_highlighting = { "markdown" },
-            },
-        })
-
-        local treesitter_parser_config = require("nvim-treesitter.parsers").get_parser_configs()
-        treesitter_parser_config.templ = {
-            install_info = {
-                url = "https://github.com/vrischmann/tree-sitter-templ.git",
-                files = {"src/parser.c", "src/scanner.c"},
-                branch = "master",
-            },
-        }
-
-        vim.treesitter.language.register("templ", "templ")
-    end
-}
-EOF
-
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/telescope.lua
-return {
-    "nvim-telescope/telescope.nvim",
-
-    tag = "0.1.5",
-
-    dependencies = {
-        "nvim-lua/plenary.nvim"
-    },
-
-    config = function()
-        require('telescope').setup({})
-
-        local builtin = require('telescope.builtin')
-        vim.keymap.set('n', '<leader>pf', builtin.find_files, { desc = "Find Files", })
-        vim.keymap.set('n', '<C-p>', builtin.git_files, {})
-        vim.keymap.set('n', '<leader>pws', function()
-            local word = vim.fn.expand("<cword>")
-            builtin.grep_string({ search = word })
-        end)
-        vim.keymap.set('n', '<leader>pWs', function()
-            local word = vim.fn.expand("<cWORD>")
-            builtin.grep_string({ search = word })
-        end)
-        vim.keymap.set('n', '<leader>ps', function()
-            builtin.grep_string({ search = vim.fn.input("Grep > ") })
-        end)
-        vim.keymap.set('n', '<leader>vh', builtin.help_tags, {})
-    end
-}
-EOF
-
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/which-key.lua
-return {
-	"folke/which-key.nvim",
-	event = "VeryLazy",
-	opts = {},
-	keys = {
-		{
-			"<leader>?",
-			function()
-				require("which-key").show({global = false})
-			end,
-			desc = "Buffer local Keymaps (which-key)",
-		},
-	},
-}
-EOF
+setup_neovim_lazy
+setup_neovim_telescope
+setup_neovim_whichkey
+setup_neovim_tree
+setup_neovim_treesitter
+setup_neovim_fugitive
+setup_neovim_lualine
+setup_neovim_lsp
 }
 
 setup_tmux() {
