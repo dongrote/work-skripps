@@ -1,5 +1,10 @@
 #!/bin/sh
 
+TZ="EST5EDT"
+NEOVIM_CONFIG_DIRECTORY="$HOME/.config/nvim"
+NEOVIM_LUA_DIRECTORY="$NEOVIM_CONFIG_DIRECTORY/lua/$USER"
+NEOVIM_PLUGINS_DIRECTORY="$NEOVIM_LUA_DIRECTORY/plugins"
+
 install_rust() {
   which cargo 2>&1 >/dev/null
   if [ $? -eq 0 ] ; then
@@ -17,7 +22,7 @@ install_docker() {
   sudo systemctl enable docker.service && \
     sudo systemctl start docker.service
 
-  sudo usermod -aG docker dongrote
+  sudo usermod -aG docker $USER
 
   sudo tdnf install -y docker-compose
 
@@ -33,8 +38,12 @@ install_neovim() {
     ln -s $HOME/nvim-linux-x86_64/bin/nvim $HOME/bin/nvim
 }
 
+neovim_plugin_filepath() {
+  echo -n "$NEOVIM_PLUGINS_DIRECTORY/$1"
+}
+
 setup_neovim_tokyonight() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/tokyonight.lua
+  cat <<EOF >$(neovim_plugin_filepath tokyonight.lua)
 return {
   "folke/tokyonight.nvim",
   lazy = false,
@@ -52,7 +61,7 @@ EOF
 }
 
 setup_neovim_fugitive() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/fugitive.lua
+  cat <<EOF >$(neovim_plugin_filepath fugitive.lua)
 return {
     "tpope/vim-fugitive",
 }
@@ -60,7 +69,7 @@ EOF
 }
 
 setup_neovim_tree() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/nvim-tree.lua
+  cat <<EOF >$(neovim_plugin_filepath nvim-tree.lua)
 return {
   "nvim-tree/nvim-tree.lua",
   version = "*",
@@ -85,7 +94,7 @@ EOF
 }
 
 setup_neovim_treesitter() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/treesitter.lua
+  cat <<EOF >$(neovim_plugin_filepath treesitter.lua)
 return {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
@@ -136,7 +145,7 @@ EOF
 }
 
 setup_neovim_whichkey() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/which-key.lua
+  cat <<EOF >$(neovim_plugin_filepath which-key.lua)
 return {
 	"folke/which-key.nvim",
 	event = "VeryLazy",
@@ -155,7 +164,7 @@ EOF
 }
 
 setup_neovim_lualine() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/lualine.lua
+  cat <<EOF >$(neovim_plugin_filepath lualine.lua)
 return {
   "nvim-lualine/lualine.nvim",
   config = function()
@@ -184,7 +193,7 @@ EOF
 }
 
 setup_neovim_telescope() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/telescope.lua
+  cat <<EOF >$(neovim_plugin_filepath telescope.lua)
 return {
     "nvim-telescope/telescope.nvim",
 
@@ -220,7 +229,7 @@ EOF
 setup_neovim_lsp() {
   # csharp-ls requires dotnet-sdk-9.0
   sudo tdnf install -y dotnet-sdk-9.0
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/plugins/lsp.lua
+  cat <<EOF >$(neovim_plugin_filepath lsp.lua)
 return {
     "neovim/nvim-lspconfig",
     dependencies = {
@@ -252,7 +261,6 @@ return {
         require("mason-lspconfig").setup({
             ensure_installed = {
                 "lua_ls",
-                "dockerls",
                 "csharp_ls",
                 "rust_analyzer",
             },
@@ -319,7 +327,7 @@ EOF
 }
 
 setup_neovim_lazy() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/lazy.lua
+  cat <<EOF >$NEOVIM_LUA_DIRECTORY/lazy.lua
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
@@ -347,7 +355,7 @@ vim.g.maplocalleader = "\\\\"
 require("lazy").setup({
   spec = {
     -- import your plugins
-    { import = "dongrote/plugins" },
+    { import = "$USER/plugins" },
   },
   -- Configure any other settings here. See the documentation for more details.
   -- colorscheme that will be used when installing plugins.
@@ -359,7 +367,7 @@ EOF
 }
 
 setup_neovim_remap() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/remap.lua
+  cat <<EOF >$NEOVIM_LUA_DIRECTORY/remap.lua
 vim.g.mapleader = " "
 
 -- split window
@@ -435,7 +443,7 @@ EOF
 }
 
 setup_neovim_settings() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/set.lua
+  cat <<EOF >$NEOVIM_LUA_DIRECTORY/set.lua
 vim.opt.nu = true
 vim.opt.relativenumber = true
 vim.opt.cursorline = true
@@ -466,7 +474,7 @@ EOF
 }
 
 setup_neovim_autocmds() {
-  cat <<EOF >$HOME/.config/nvim/lua/dongrote/autocmds.lua
+  cat <<EOF >$NEOVIM_LUA_DIRECTORY/autocmds.lua
 -- Define an autocommand group to organize your autocmds
 local augroup = vim.api.nvim_create_augroup("BuildKeymapGroup", { clear = true })
 
@@ -513,12 +521,12 @@ setup_neovim() {
   if [ -d $HOME/.config/nvim ] ; then
     rm -rf $HOME/.config/nvim
   fi
-  mkdir -p $HOME/.config/nvim/lua/dongrote/plugins
+  mkdir -p "$NEOVIM_PLUGINS_DIRECTORY"
   cat <<EOF >$HOME/.config/nvim/init.lua
-require('dongrote.autocmds')
-require('dongrote.remap')
-require('dongrote.set')
-require('dongrote.lazy')
+require('$USER.autocmds')
+require('$USER.remap')
+require('$USER.set')
+require('$USER.lazy')
 EOF
 
 setup_neovim_autocmds
@@ -595,9 +603,9 @@ EOF
 # establish $HOME/bin
 mkdir -p $HOME/bin
 
-# set timezone to eastern
+# set timezone to $TZ
 sudo rm /etc/localtime && \
-  sudo ln -s /usr/share/zoneinfo/EST5EDT /etc/localtime
+  sudo ln -s /usr/share/zoneinfo/$TZ /etc/localtime
 
 sudo dnf install -y \
   htop \
