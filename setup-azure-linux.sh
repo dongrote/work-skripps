@@ -10,7 +10,7 @@ install_rust() {
   if [ $? -eq 0 ] ; then
     return
   fi
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 }
 
 install_docker() {
@@ -32,8 +32,9 @@ install_docker() {
 install_neovim() {
   # install neovim
   NVIM_TARBALL=nvim-linux-x86_64.tar.gz
+  rm -rf $HOME/nvim-linux-x86_64
   wget https://github.com/neovim/neovim/releases/download/nightly/$NVIM_TARBALL &&
-    tar -zxf $NVIM_TARBALL &&
+    tar -zxf $NVIM_TARBALL -C "$HOME" &&
     rm $NVIM_TARBALL &&
     ln -s $HOME/nvim-linux-x86_64/bin/nvim $HOME/bin/nvim
 }
