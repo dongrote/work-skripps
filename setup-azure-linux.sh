@@ -263,6 +263,8 @@ return {
             ensure_installed = {
                 "lua_ls",
                 "csharp_ls",
+                "docker_ls",
+                "ts_ls",
                 "rust_analyzer",
             },
             handlers = {
@@ -608,9 +610,11 @@ mkdir -p $HOME/bin
 sudo rm /etc/localtime && \
   sudo ln -s /usr/share/zoneinfo/$TZ /etc/localtime
 
-sudo dnf install -y \
+sudo tdnf install -y \
   htop \
   tmux \
+  tree \
+  nodejs-npm \
   build-essential
 
 install_docker
